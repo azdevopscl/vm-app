@@ -1,0 +1,41 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  resourceGroupName: 'myResourceGroup'
+  vmName: 'myVM'
+  adminUsername: 'azureuser'
+  adminPassword: 'P@ssw0rd1234'
+  location: 'eastus'
+  image: 'Win2019Datacenter'
+
+steps:
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: '<Your Azure Service Connection>'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      # Create a resource group
+      az group create --name $(resourceGroupName) --location $(location)
+
+      # Create a virtual network
+      az network vnet create --resource-group $(resourceGroupName) --name myVnet --subnet-name mySubnet
+
+      # Create a public IP address
+      az network public-ip create --resource-group $(resourceGroupName) --name myPublicIP
+
+      # Create a network security group
+      az network nsg create --resource-group $(resourceGroupName) --name myNetworkSecurityGroup
+
+      # Create a virtual network card and associate with public IP address and NSG
+      az network nic create --resource-group $(resourceGroupName) --name myNic --vnet-name myVnet --subnet mySubnet --network-security-group myNetworkSecurityGroup --public-ip-address myPublicIP
+
+      # Create a virtual machine
+      az vm create --resource-group $(resourceGroupName) --name $(vmName) --nics myNic --image $(image) --admin-username $(adminUsername) --admin-password $(adminPassword) --location $(location)
+
+      # Open port 3389 to allow RDP traffic to VM
+      az vm open-port --port 3389 --resource-group $(resourceGroupName) --name $(vmName)
